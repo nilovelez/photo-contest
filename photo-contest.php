@@ -25,6 +25,8 @@ define('PHOTO_CONTEST_PLUGIN_URL', plugin_dir_url(__FILE__));
 // Load required files
 require_once PHOTO_CONTEST_PLUGIN_DIR . 'includes/class-photo-contest.php';
 require_once PHOTO_CONTEST_PLUGIN_DIR . 'includes/class-photo-contest-settings.php';
+require_once PHOTO_CONTEST_PLUGIN_DIR . 'includes/class-photo-contest-post-types.php';
+require_once PHOTO_CONTEST_PLUGIN_DIR . 'includes/class-photo-contest-voting.php';
 
 // Initialize the plugin
 function run_photo_contest() {
@@ -33,6 +35,9 @@ function run_photo_contest() {
 
     $settings = new Photo_Contest_Settings('photo-contest', '1.0.0');
     $hashtag = $settings->get_hashtag();
+
+    // Initialize voting
+    $voting = new Photo_Contest_Voting();
 }
 run_photo_contest();
 

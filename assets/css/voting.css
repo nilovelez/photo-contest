@@ -1,0 +1,126 @@
+.photo-contest-voting {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    text-align: center;
+}
+
+.photo-contest-voting img {
+    max-width: 100%;
+    height: auto;
+    margin: 2rem 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.voting-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.vote-button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    background-color: #0073aa;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.vote-button:hover {
+    background-color: #005177;
+}
+
+.vote-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.remaining-photos {
+    margin-top: 2rem;
+    font-size: 1.1rem;
+    color: #666;
+}
+
+.photo-contest-login-message,
+.photo-contest-no-more-photos {
+    max-width: 600px;
+    margin: 4rem auto;
+    padding: 2rem;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.photo-contest-login-message .button,
+.photo-contest-no-more-photos .button {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.75rem 1.5rem;
+    background-color: #0073aa;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.photo-contest-login-message .button:hover {
+    background-color: #005177;
+}
+
+/* Results table styles */
+.photo-contest-results {
+    width: 100%;
+    margin: 2rem auto;
+    padding: 2rem;
+    overflow-x: auto;
+}
+
+.photo-contest-results table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.photo-contest-results th,
+.photo-contest-results td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.photo-contest-results th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.photo-contest-results tr:nth-child(odd) {
+    background-color: #eeeeee;
+}
+
+.photo-contest-results tr:hover {
+    background-color: #f8f9fa;
+}
+
+.photo-contest-results img {
+    width: 100px;
+    height: auto;
+    border-radius: 4px;
+}
+
+.photo-contest-results td:first-child {
+    font-weight: 600;
+    color: #0073aa;
+}
+
+.photo-contest-results td:last-child {
+    font-weight: 600;
+    color: #28a745;
+} 

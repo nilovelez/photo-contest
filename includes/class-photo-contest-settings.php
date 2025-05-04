@@ -78,6 +78,24 @@ class Photo_Contest_Settings {
 
     public function render_section_info() {
         echo '<p>' . __('Configure the settings for the Photo Contest plugin.', 'photo-contest') . '</p>';
+        
+        echo '<div class="photo-contest-shortcodes-info" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px;">';
+        echo '<h3>' . __('Required Pages', 'photo-contest') . '</h3>';
+        echo '<p>' . __('For the plugin to work properly, you need to create the following pages:', 'photo-contest') . '</p>';
+        echo '<ol>';
+        echo '<li><strong>' . __('Voting Page', 'photo-contest') . '</strong><br>';
+        echo __('Create a page with the shortcode:', 'photo-contest') . ' <code>[vote_photos]</code><br>';
+        echo __('This page will display the voting interface where users can vote for photos.', 'photo-contest') . '</li>';
+        
+        echo '<li><strong>' . __('Results Page', 'photo-contest') . '</strong><br>';
+        echo __('Create a page with the shortcode:', 'photo-contest') . ' <code>[vote_results]</code><br>';
+        echo __('This page will display the top 10 photos ranked by average score.', 'photo-contest') . '</li>';
+
+        echo '<li><strong>' . __('Photos Archive', 'photo-contest') . '</strong><br>';
+        echo __('Add this URL to your menu:', 'photo-contest') . ' <code>' . esc_url(get_post_type_archive_link('photos')) . '</code><br>';
+        echo __('This page will display all photos participating in the contest.', 'photo-contest') . '</li>';
+        echo '</ol>';
+        echo '</div>';
     }
 
     public function render_cron_section() {
