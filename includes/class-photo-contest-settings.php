@@ -117,11 +117,11 @@ class Photo_Contest_Settings {
                class="regular-text"
                placeholder="shareyourpride2024">
         <p class="description">
-            <?php _e('Enter the hashtag that will be used to identify contest photos. Do not include the # symbol.', 'photo-contest'); ?>
+                            <?php _e('Enter the hashtag that will be used to identify contest photos.', 'photo-contest'); ?>
         </p>
         <?php
         if (!empty($hashtag)) {
-            $directory_url = 'https://wordpress.org/photos/t/' . urlencode($hashtag) . '/';
+            $directory_url = 'https://wordpress.org/photos/t/' . urlencode(str_replace('#', '', $hashtag)) . '/';
             ?>
             <div style="margin-top: 1em;">
                 <p class="description">
@@ -143,8 +143,8 @@ class Photo_Contest_Settings {
     }
 
     private function validate_hashtag($hashtag) {
-        // Remove # if present and convert to lowercase
-        $hashtag = strtolower(ltrim($hashtag, '#'));
+        // Convert to lowercase but keep the hashtag as entered
+        $hashtag = strtolower(trim($hashtag));
 
         // First, get the tag ID from the photo-tags taxonomy
         $tag_response = wp_remote_get($this->api_url . '/photo-tags?search=' . urlencode($hashtag));

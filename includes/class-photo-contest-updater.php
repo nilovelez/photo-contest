@@ -42,37 +42,51 @@ class Photo_Contest_Updater {
     }
 
     /**
-     * Process an RSS item and return an array with the required fields.
+     * Process a photo from the REST API and return an array with the required fields.
      *
      * @since    1.0.0
-     * @param    SimpleXMLElement    $item    The RSS item to process.
-     * @return   array                        The processed data.
+     * @param    array    $photo    The photo data from REST API.
+     * @return   array              The processed data.
      */
-    private function process_rss_item($item) {
-        // Get the post ID directly
-        $post_id = (string)$item->{'post-id'};
+    private function process_api_photo($photo) {
+        // Get the post ID
+        $post_id = $photo['id'];
 
-        // Get the URL and extract the slug
-        $url = (string)$item->link;
-        $slug = basename(parse_url($url, PHP_URL_PATH));
+        // Get the slug
+        $slug = $photo['slug'];
 
-        // Get the image URL from the enclosure
-        $enclosure = $item->enclosure;
-        $image_url = (string)$enclosure['url'];
+        // Get the URL
+        $url = $photo['link'];
 
-        // Get the author from CDATA
-        $creator = $item->children('dc', true)->creator;
-        $author = (string)$creator;
+        // Get the image URL from featured media (prefer smaller thumbnail for performance)
+        $image_url = '';
+        if (isset($photo['_embedded']['wp:featuredmedia'][0])) {
+            $media = $photo['_embedded']['wp:featuredmedia'][0];
+            
+            // First try to get the 1536x1536 thumbnail (much smaller than original)
+            if (isset($media['media_details']['sizes']['1536x1536']['source_url'])) {
+                $image_url = $media['media_details']['sizes']['1536x1536']['source_url'];
+            }
+            // Fallback to original size if thumbnail not available
+            elseif (isset($media['source_url'])) {
+                $image_url = $media['source_url'];
+            }
+        }
 
-        // Get the publication date and convert to Unix timestamp
-        $pub_date = (string)$item->pubDate;
-        $date = strtotime($pub_date);
+        // Get the author
+        $author = '';
+        if (isset($photo['_embedded']['author'][0]['name'])) {
+            $author = $photo['_embedded']['author'][0]['name'];
+        }
 
-        // Get the feed modification date and convert to Unix timestamp
-        $feed_date = strtotime((string)$item->children('dc', true)->date);
+        // Get the publication date
+        $date = strtotime($photo['date']);
 
-        // Get the description from CDATA
-        $description = (string)$item->description;
+        // Get the modified date
+        $modified_date = strtotime($photo['modified']);
+
+        // Get the description/content
+        $description = wp_strip_all_tags($photo['content']['rendered']);
 
         return array(
             'id' => $post_id,
@@ -81,8 +95,89 @@ class Photo_Contest_Updater {
             'image_url' => $image_url,
             'author' => $author,
             'date' => $date,
-            'feed_date' => $feed_date,
+            'feed_date' => $modified_date,
             'description' => $description
+        );
+    }
+
+    /**
+     * Get all photos from the REST API for a specific tag ID.
+     *
+     * @since    1.0.0
+     * @param    int    $tag_id    The tag ID to get photos for.
+     * @return   array|WP_Error    Array with photos and total count, or WP_Error on failure.
+     */
+    private function get_photos_from_api($tag_id) {
+        $photos = array();
+        $page = 1;
+        $per_page = 100; // Maximum allowed by WordPress REST API
+        $total_photos = 0;
+
+        do {
+            $api_url = add_query_arg(array(
+                'photo-tags' => $tag_id,
+                'page' => $page,
+                'per_page' => $per_page,
+                '_embed' => 1 // Include featured media and author data
+            ), $this->api_url . '/photos');
+
+            //echo "Calling API URL: " . $api_url . "<br>";
+
+            $response = wp_remote_get($api_url, array(
+                'timeout' => 30,
+                'user-agent' => 'WordPress/Photo-Contest-Plugin',
+                'headers' => array(
+                    'Accept' => 'application/json'
+                )
+            ));
+            
+            if (is_wp_error($response)) {
+                echo "WP Error: " . $response->get_error_message() . "<br>";
+                return new WP_Error('api_error', 'Error connecting to WordPress Photo Directory API: ' . $response->get_error_message());
+            }
+
+            $response_code = wp_remote_retrieve_response_code($response);
+            //echo "Response code: " . $response_code . "<br>";
+            
+            if ($response_code !== 200) {
+                echo "HTTP Error: " . $response_code . "<br>";
+                return new WP_Error('api_error', 'HTTP Error ' . $response_code . ' from WordPress Photo Directory API.');
+            }
+
+            $body = wp_remote_retrieve_body($response);
+            //echo "Response body length: " . strlen($body) . " characters<br>";
+            
+            $data = json_decode($body, true);
+
+            if (!is_array($data)) {
+                echo "JSON decode error: " . json_last_error_msg() . "<br>";
+                echo "First 500 chars of response: " . substr($body, 0, 500) . "<br>";
+                return new WP_Error('api_error', 'Invalid response from WordPress Photo Directory API. JSON decode failed.');
+            }
+
+            echo "Found " . count($data) . " photos on page " . $page . "<br>";
+
+            // Get total photos count from headers
+            if ($page === 1) {
+                $total_photos = wp_remote_retrieve_header($response, 'X-WP-Total');
+                echo "Total photos available: " . $total_photos . "<br>";
+            }
+
+            // Add all photos from this page
+            foreach ($data as $photo) {
+                $photos[] = $this->process_api_photo($photo);
+            }
+
+            // Check if there are more pages
+            $total_pages = wp_remote_retrieve_header($response, 'X-WP-TotalPages');
+            echo "Total pages: " . $total_pages . "<br>";
+            
+            $page++;
+        } while ($page <= $total_pages);
+
+        return array(
+            'photos' => $photos,
+            'total_photos' => $total_photos
         );
     }
 
@@ -93,43 +188,35 @@ class Photo_Contest_Updater {
      */
     public function check_update_request() {
         if (isset($_GET['action']) && $_GET['action'] === 'update-contest-photos') {
-            $hashtag = $this->settings->get_hashtag();
+            $tag_id = $this->settings->get_tag_id();
             
-            if (empty($hashtag)) {
-                echo 'hastag not defined';
+            if (empty($tag_id)) {
+                echo 'Tag ID not defined. Please configure the hashtag in settings.';
                 exit;
             }
 
-            // Get the RSS feed for the tag
-            $feed_url = 'https://wordpress.org/photos/t/' . urlencode($hashtag) . '/feed/';
-            $response = wp_remote_get($feed_url);
+            // Get all photos from the REST API
+            $api_result = $this->get_photos_from_api($tag_id);
             
-            if (is_wp_error($response)) {
-                echo 'Error getting RSS feed';
+            if (is_wp_error($api_result)) {
+                echo 'Error: ' . $api_result->get_error_message();
                 exit;
             }
 
-            $body = wp_remote_retrieve_body($response);
-            
-            // Parse the RSS feed
-            $xml = simplexml_load_string($body);
-            if ($xml === false) {
-                echo 'Error parsing RSS feed';
-                exit;
-            }
-
-            // Process all items
-            $photos_data = array();
-            foreach ($xml->channel->item as $item) {
-                $photos_data[] = $this->process_rss_item($item);
-            }
+            $photos_data = $api_result['photos'];
+            $total_photos = $api_result['total_photos'];
 
             if (empty($photos_data)) {
-                echo 'No photos found in feed';
+                echo 'No photos found with this hashtag.';
                 exit;
             }
 
-            // Process each photo
+            echo 'Found ' . count($photos_data) . ' photos total. Processing up to 50 new/updated photos...<br><br>';
+
+            $processed_count = 0;
+            $limit = 50;
+
+            // Process each photo until we reach the limit or process all
             foreach ($photos_data as $photo_data) {
                 $result = $this->create_or_update_photos_post($photo_data);
                 
@@ -139,6 +226,24 @@ class Photo_Contest_Updater {
                 }
 
                 echo 'Photo ' . $photo_data['slug'] . '. ' . ucfirst($result['status']) . ' (post ID ' . $result['post_id'] . ')<br>';
+                
+                // Count only created or updated photos (not skipped)
+                if ($result['status'] === 'created' || $result['status'] === 'updated') {
+                    $processed_count++;
+                    
+                    // Stop when we reach the limit
+                    if ($processed_count >= $limit) {
+                        echo '<br><strong>⚠️ LIMIT REACHED:</strong> Processed ' . $limit . ' new/updated photos. ';
+                        echo 'Run the update again to continue with remaining photos.<br>';
+                        break;
+                    }
+                }
+            }
+
+            // Show completion message
+            if ($processed_count < $limit) {
+                echo '<br><strong>✅ COMPLETED:</strong> All photos have been processed. ';
+                echo 'Total new/updated: ' . $processed_count . '<br>';
             }
             exit;
         }
