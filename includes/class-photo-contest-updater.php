@@ -138,18 +138,7 @@ class Photo_Contest_Updater {
                     continue;
                 }
 
-                // Check if post was created, updated or skipped
-                $existing_post = get_page_by_path($photo_data['slug'], OBJECT, 'photos');
-                if (!$existing_post) {
-                    echo 'Photo ' . $photo_data['slug'] . '. Created (post ID ' . $result . ')<br>';
-                } else {
-                    $last_feed_update = get_post_meta($existing_post->ID, 'photo_feed_date', true);
-                    if ($last_feed_update == $photo_data['feed_date']) {
-                        echo 'Photo ' . $photo_data['slug'] . '. Skipped (post ID ' . $result . ')<br>';
-                    } else {
-                        echo 'Photo ' . $photo_data['slug'] . '. Updated (post ID ' . $result . ')<br>';
-                    }
-                }
+                echo 'Photo ' . $photo_data['slug'] . '. ' . ucfirst($result['status']) . ' (post ID ' . $result['post_id'] . ')<br>';
             }
             exit;
         }
@@ -159,7 +148,7 @@ class Photo_Contest_Updater {
      * Create or update a photo post
      *
      * @param array $photo_data The photo data to create/update
-     * @return int|WP_Error The post ID on success, WP_Error on failure
+     * @return array|WP_Error The result of the operation
      */
     private function create_or_update_photos_post($photo_data) {
         // Check if post exists by slug
@@ -171,7 +160,7 @@ class Photo_Contest_Updater {
             
             // If the feed date is the same, skip the update
             if ($last_feed_update == $photo_data['feed_date']) {
-                return $existing_post->ID;
+                return array('status' => 'skipped', 'post_id' => $existing_post->ID);
             }
         }
         
@@ -199,6 +188,17 @@ class Photo_Contest_Updater {
                     set_post_thumbnail($post_id, $image_id);
                 }
             }
+
+            if (!is_wp_error($post_id)) {
+                // Update custom fields
+                update_post_meta($post_id, 'photo_id', $photo_data['id']);
+                update_post_meta($post_id, 'photo_url', $photo_data['url']);
+                update_post_meta($post_id, 'photo_image_url', $photo_data['image_url']);
+                update_post_meta($post_id, 'photo_author', $photo_data['author']);
+                update_post_meta($post_id, 'photo_date', $photo_data['date']);
+                update_post_meta($post_id, 'photo_feed_date', $photo_data['feed_date']);
+                return array('status' => 'updated', 'post_id' => $post_id);
+            }
         } else {
             // Create new post
             $post_id = wp_insert_post($post_data, true);
@@ -210,20 +210,19 @@ class Photo_Contest_Updater {
                 // Assign the image as the featured image of the post
                 set_post_thumbnail($post_id, $image_id);
             }
+
+            if (!is_wp_error($post_id)) {
+                // Update custom fields
+                update_post_meta($post_id, 'photo_id', $photo_data['id']);
+                update_post_meta($post_id, 'photo_url', $photo_data['url']);
+                update_post_meta($post_id, 'photo_image_url', $photo_data['image_url']);
+                update_post_meta($post_id, 'photo_author', $photo_data['author']);
+                update_post_meta($post_id, 'photo_date', $photo_data['date']);
+                update_post_meta($post_id, 'photo_feed_date', $photo_data['feed_date']);
+                return array('status' => 'created', 'post_id' => $post_id);
+            }
         }
 
-        if (is_wp_error($post_id)) {
-            return $post_id;
-        }
-
-        // Update custom fields
-        update_post_meta($post_id, 'photo_id', $photo_data['id']);
-        update_post_meta($post_id, 'photo_url', $photo_data['url']);
-        update_post_meta($post_id, 'photo_image_url', $photo_data['image_url']);
-        update_post_meta($post_id, 'photo_author', $photo_data['author']);
-        update_post_meta($post_id, 'photo_date', $photo_data['date']);
-        update_post_meta($post_id, 'photo_feed_date', $photo_data['feed_date']);
-
-        return $post_id;
+        return new WP_Error('update_failed', 'Failed to create or update photo');
     }
 }

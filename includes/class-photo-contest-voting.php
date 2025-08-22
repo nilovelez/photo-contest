@@ -87,11 +87,21 @@ class Photo_Contest_Voting {
             <h2><?php _e('Vote for this Photo', 'photo-contest'); ?></h2>
             <?php echo get_the_post_thumbnail($photo->ID, 'large'); ?>
             <div class="voting-buttons">
-                <button class="vote-button" data-value="1">1</button>
-                <button class="vote-button" data-value="2">2</button>
-                <button class="vote-button" data-value="3">3</button>
-                <button class="vote-button" data-value="4">4</button>
-                <button class="vote-button" data-value="5">5</button>
+                <button class="vote-button" data-value="1">
+                    <img src="<?php echo PHOTO_CONTEST_PLUGIN_URL; ?>assets/img/face_1.png" alt="1">
+                </button>
+                <button class="vote-button" data-value="2">
+                    <img src="<?php echo PHOTO_CONTEST_PLUGIN_URL; ?>assets/img/face_2.png" alt="2">
+                </button>
+                <button class="vote-button" data-value="3">
+                    <img src="<?php echo PHOTO_CONTEST_PLUGIN_URL; ?>assets/img/face_3.png" alt="3">
+                </button>
+                <button class="vote-button" data-value="4">
+                    <img src="<?php echo PHOTO_CONTEST_PLUGIN_URL; ?>assets/img/face_4.png" alt="4">
+                </button>
+                <button class="vote-button" data-value="5">
+                    <img src="<?php echo PHOTO_CONTEST_PLUGIN_URL; ?>assets/img/face_5.png" alt="5">
+                </button>
             </div>
             <div class="remaining-photos">
                 <?php
