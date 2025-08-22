@@ -72,6 +72,10 @@ class Photo_Contest_Updater {
                 $image_url = $media['source_url'];
             }
         }
+        $thumbnail_url = $image_url;
+        if (isset($media['media_details']['sizes']['medium']['source_url'])) {
+            $thumbnail_url = $media['media_details']['sizes']['medium']['source_url'];
+        }
 
         // Get the author
         $author = '';
@@ -93,6 +97,7 @@ class Photo_Contest_Updater {
             'slug' => $slug,
             'url' => $url,
             'image_url' => $image_url,
+            'thumbnail_url' => $thumbnail_url,
             'author' => $author,
             'date' => $date,
             'feed_date' => $modified_date,
@@ -211,12 +216,11 @@ class Photo_Contest_Updater {
                 exit;
             }
 
-            echo 'Found ' . count($photos_data) . ' photos total. Processing up to 50 new/updated photos...<br><br>';
+            echo 'Found ' . count($photos_data) . ' photos total. Processing all photos...<br><br>';
 
             $processed_count = 0;
-            $limit = 50;
 
-            // Process each photo until we reach the limit or process all
+            // Process all photos
             foreach ($photos_data as $photo_data) {
                 $result = $this->create_or_update_photos_post($photo_data);
                 
@@ -230,21 +234,12 @@ class Photo_Contest_Updater {
                 // Count only created or updated photos (not skipped)
                 if ($result['status'] === 'created' || $result['status'] === 'updated') {
                     $processed_count++;
-                    
-                    // Stop when we reach the limit
-                    if ($processed_count >= $limit) {
-                        echo '<br><strong>⚠️ LIMIT REACHED:</strong> Processed ' . $limit . ' new/updated photos. ';
-                        echo 'Run the update again to continue with remaining photos.<br>';
-                        break;
-                    }
                 }
             }
 
             // Show completion message
-            if ($processed_count < $limit) {
-                echo '<br><strong>✅ COMPLETED:</strong> All photos have been processed. ';
-                echo 'Total new/updated: ' . $processed_count . '<br>';
-            }
+            echo '<br><strong>✅ COMPLETED:</strong> All photos have been processed. ';
+            echo 'Total new/updated: ' . $processed_count . '<br>';
             exit;
         }
     }
@@ -283,22 +278,13 @@ class Photo_Contest_Updater {
             $post_data['ID'] = $existing_post->ID;
             $post_id = wp_update_post($post_data, true);
 
-            // Check if post has featured image
-            if (!has_post_thumbnail($post_id)) {
-                // Download the image and add it to the media library
-                $image_id = media_sideload_image($photo_data['image_url'], $post_id, null, 'id');
-
-                if (!is_wp_error($image_id)) {
-                    // Assign the image as the featured image of the post
-                    set_post_thumbnail($post_id, $image_id);
-                }
-            }
 
             if (!is_wp_error($post_id)) {
                 // Update custom fields
                 update_post_meta($post_id, 'photo_id', $photo_data['id']);
                 update_post_meta($post_id, 'photo_url', $photo_data['url']);
                 update_post_meta($post_id, 'photo_image_url', $photo_data['image_url']);
+                update_post_meta($post_id, 'photo_thumbnail_url', $photo_data['thumbnail_url']);
                 update_post_meta($post_id, 'photo_author', $photo_data['author']);
                 update_post_meta($post_id, 'photo_date', $photo_data['date']);
                 update_post_meta($post_id, 'photo_feed_date', $photo_data['feed_date']);
@@ -308,19 +294,12 @@ class Photo_Contest_Updater {
             // Create new post
             $post_id = wp_insert_post($post_data, true);
 
-            // Download the image and add it to the media library
-            $image_id = media_sideload_image($photo_data['image_url'], $post_id, null, 'id');
-
-            if (!is_wp_error($image_id)) {
-                // Assign the image as the featured image of the post
-                set_post_thumbnail($post_id, $image_id);
-            }
-
             if (!is_wp_error($post_id)) {
                 // Update custom fields
                 update_post_meta($post_id, 'photo_id', $photo_data['id']);
                 update_post_meta($post_id, 'photo_url', $photo_data['url']);
                 update_post_meta($post_id, 'photo_image_url', $photo_data['image_url']);
+                update_post_meta($post_id, 'photo_thumbnail_url', $photo_data['thumbnail_url']);
                 update_post_meta($post_id, 'photo_author', $photo_data['author']);
                 update_post_meta($post_id, 'photo_date', $photo_data['date']);
                 update_post_meta($post_id, 'photo_feed_date', $photo_data['feed_date']);

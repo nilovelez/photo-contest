@@ -85,7 +85,12 @@ class Photo_Contest_Voting {
         ?>
         <div class="photo-contest-voting" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
             <h2><?php _e('Vote for this Photo', 'photo-contest'); ?></h2>
-            <?php echo get_the_post_thumbnail($photo->ID, 'large'); ?>
+            <?php 
+            $image_url = get_post_meta($photo->ID, 'photo_image_url', true);
+            if (!empty($image_url)) {
+                echo '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($photo->post_title) . '" style="max-width: 100%; height: auto;">';
+            }
+            ?>
             <div class="voting-buttons">
                 <button class="vote-button" data-value="1">
                     <img src="<?php echo PHOTO_CONTEST_PLUGIN_URL; ?>assets/img/face_1.png" alt="1">
@@ -314,7 +319,14 @@ class Photo_Contest_Voting {
                     <?php foreach ($photos as $index => $photo): ?>
                         <tr>
                             <td><?php echo $index + 1; ?></td>
-                            <td><?php echo get_the_post_thumbnail($photo->ID, 'thumbnail'); ?></td>
+                            <td>
+                                <?php 
+                                $thumbnail_url = get_post_meta($photo->ID, 'photo_thumbnail_url', true);
+                                if (!empty($thumbnail_url)) {
+                                    echo '<img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($photo->post_title) . '" style="width: 100px; height: auto;">';
+                                }
+                                ?>
+                            </td>
                             <td><a href="<?php echo esc_url(get_post_meta($photo->ID, 'photo_url', true)); ?>"><?php echo esc_html($photo->post_title); ?></a></td>
                             <td><?php echo esc_html(get_post_meta($photo->ID, 'photo_author', true)); ?></td>
                             <td><?php echo number_format(get_post_meta($photo->ID, '_photo_vote_average', true), 2); ?></td>

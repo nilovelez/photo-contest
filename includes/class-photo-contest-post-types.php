@@ -140,8 +140,9 @@ class Photo_Contest_Post_Types {
      */
     public function display_featured_image_column($column, $post_id) {
         if ($column === 'featured_image') {
-            if (has_post_thumbnail($post_id)) {
-                echo get_the_post_thumbnail($post_id, array(50, 50));
+            $thumbnail_url = get_post_meta($post_id, 'photo_thumbnail_url', true);
+            if (!empty($thumbnail_url)) {
+                echo '<img src="' . esc_url($thumbnail_url) . '" alt="Photo thumbnail" style="width: 50px; height: 50px; object-fit: cover;">';
             } else {
                 echo '<span class="dashicons dashicons-format-image"></span>';
             }
