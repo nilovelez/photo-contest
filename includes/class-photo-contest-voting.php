@@ -87,14 +87,22 @@ class Photo_Contest_Voting {
     private function show_voting_interface($photo) {
         ?>
         <div class="photo-contest-voting" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
-            <h2><?php _e('Vote for this Photo', 'photo-contest'); ?></h2>
-            <button class="disqualify-button" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
-                <?php _e('Disqualify this photo', 'photo-contest'); ?>
-            </button>
+            <div class="photo-contest-voting-header">   
+                <h2><?php _e('Vote for this Photo', 'photo-contest'); ?></h2>
+                <button class="disqualify-button" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
+                    <?php _e('Disqualify this photo', 'photo-contest'); ?>
+                </button>
+            </div>
             <?php 
             $image_url = get_post_meta($photo->ID, 'photo_image_url', true);
             if (!empty($image_url)) {
-                echo '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($photo->post_title) . '" style="max-width: 100%; height: auto;">';
+                // Get the excerpt or generate one from content
+                $excerpt = get_the_excerpt($photo->ID);
+                if (empty($excerpt)) {
+                    $excerpt = wp_trim_words($photo->post_content, 20, '...');
+                }
+                
+                echo '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($photo->post_title) . '" title="' . esc_attr($excerpt) . '" style="max-width: 100%; height: auto;">';
             }
             ?>
             <div class="voting-buttons">

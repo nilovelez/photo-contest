@@ -5,10 +5,25 @@
     text-align: center;
 }
 
+.photo-contest-voting-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.photo-contest-voting-header h2 {
+    margin: 0;
+}
+
+.photo-contest-voting-header .disqualify-button {
+    margin: 0;
+}
+
 .photo-contest-voting img {
     max-width: 100%;
     height: auto;
-    margin: 2rem 0;
+    margin: 0 0 1rem;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
@@ -17,7 +32,7 @@
     display: flex;
     justify-content: center;
     gap: 1rem;
-    margin: 2rem 0;
+    margin: 0 0 2rem 0;
 }
 
 .vote-button {
