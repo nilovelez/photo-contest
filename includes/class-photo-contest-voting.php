@@ -421,15 +421,39 @@ class Photo_Contest_Voting {
             return '<p>' . __('No photos found', 'photo-contest') . '</p>';
         }
 
-        // Group photos by author
+        // Group photos by author and count accepted/rejected
         $authors_photos = array();
+        $authors_stats = array();
+        
         foreach ($photos as $photo) {
             $author = get_post_meta($photo->ID, 'photo_author', true);
             if (!empty($author)) {
                 if (!isset($authors_photos[$author])) {
                     $authors_photos[$author] = array();
+                    $authors_stats[$author] = array(
+                        'total' => 0,
+                        'accepted' => 0,
+                        'rejected' => 0
+                    );
                 }
                 $authors_photos[$author][] = $photo;
+                $authors_stats[$author]['total']++;
+                
+                // Check if photo is disqualified
+                $terms = wp_get_object_terms($photo->ID, 'photo_tag');
+                $is_disqualified = false;
+                foreach ($terms as $term) {
+                    if ($term->slug === 'disqualified') {
+                        $is_disqualified = true;
+                        break;
+                    }
+                }
+                
+                if ($is_disqualified) {
+                    $authors_stats[$author]['rejected']++;
+                } else {
+                    $authors_stats[$author]['accepted']++;
+                }
             }
         }
 
@@ -449,29 +473,49 @@ class Photo_Contest_Voting {
                 <div class="author-section">
                     <h3 class="author-name">
                         <?php echo esc_html($author); ?> 
-                        <span class="photo-count">(<?php echo count($author_photos); ?> <?php echo count($author_photos) === 1 ? __('photo', 'photo-contest') : __('photos', 'photo-contest'); ?>)</span>
+                        <span class="photo-count">(
+                            <?php echo $authors_stats[$author]['total']; ?> <?php echo $authors_stats[$author]['total'] === 1 ? __('photo', 'photo-contest') : __('photos', 'photo-contest'); ?>, 
+                            <?php echo $authors_stats[$author]['accepted']; ?> <?php echo __('accepted', 'photo-contest'); ?>, 
+                            <?php echo $authors_stats[$author]['rejected']; ?> <?php echo __('rejected', 'photo-contest'); ?>
+                        )</span>
                     </h3>
                     <div class="author-photos-grid">
-                        <?php foreach ($author_photos as $photo): ?>
-                            <div class="photo-thumbnail">
-                                <?php 
-                                $thumbnail_url = get_post_meta($photo->ID, 'photo_thumbnail_url', true);
-                                $photo_url = get_post_meta($photo->ID, 'photo_url', true);
-                                
-                                if (!empty($thumbnail_url)) {
-                                    if (!empty($photo_url)) {
-                                        echo '<a href="' . esc_url($photo_url) . '" target="_blank">';
-                                    }
-                                    echo '<img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($photo->post_title) . '" title="' . esc_attr($photo->post_title) . '">';
-                                    if (!empty($photo_url)) {
-                                        echo '</a>';
-                                    }
-                                } else {
-                                    echo '<div class="no-thumbnail">' . esc_html($photo->post_title) . '</div>';
-                                }
-                                ?>
-                            </div>
-                        <?php endforeach; ?>
+                                                 <?php foreach ($author_photos as $photo): ?>
+                             <?php 
+                             // Check if photo is disqualified
+                             $terms = wp_get_object_terms($photo->ID, 'photo_tag');
+                             $is_disqualified = false;
+                             foreach ($terms as $term) {
+                                 if ($term->slug === 'disqualified') {
+                                     $is_disqualified = true;
+                                     break;
+                                 }
+                             }
+                             
+                             $thumbnail_class = 'photo-thumbnail';
+                             if ($is_disqualified) {
+                                 $thumbnail_class .= ' rejected-photo';
+                             }
+                             ?>
+                             <div class="<?php echo esc_attr($thumbnail_class); ?>">
+                                 <?php 
+                                 $thumbnail_url = get_post_meta($photo->ID, 'photo_thumbnail_url', true);
+                                 $photo_url = get_post_meta($photo->ID, 'photo_url', true);
+                                 
+                                 if (!empty($thumbnail_url)) {
+                                     if (!empty($photo_url)) {
+                                         echo '<a href="' . esc_url($photo_url) . '" target="_blank">';
+                                     }
+                                     echo '<img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($photo->post_title) . '" title="' . esc_attr($photo->post_title) . '">';
+                                     if (!empty($photo_url)) {
+                                         echo '</a>';
+                                     }
+                                 } else {
+                                     echo '<div class="no-thumbnail">' . esc_html($photo->post_title) . '</div>';
+                                 }
+                                 ?>
+                             </div>
+                         <?php endforeach; ?>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -531,20 +575,24 @@ class Photo_Contest_Voting {
             text-decoration: none;
         }
         
-        .no-thumbnail {
-            width: 100px;
-            height: 100px;
-            background: #f0f0f0;
-            border: 2px solid #ddd;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-size: 0.8em;
-            color: #666;
-            word-break: break-word;
-        }
+                 .no-thumbnail {
+             width: 100px;
+             height: 100px;
+             background: #f0f0f0;
+             border: 2px solid #ddd;
+             border-radius: 4px;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             text-align: center;
+             font-size: 0.8em;
+             color: #666;
+             word-break: break-word;
+         }
+         
+         .rejected-photo {
+             opacity: 0.25;
+         }
         </style>
         <?php
         return ob_get_clean();
