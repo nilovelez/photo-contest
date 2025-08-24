@@ -40,4 +40,41 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    // Handle disqualify button clicks
+    $('.disqualify-button').on('click', function() {
+        const button = $(this);
+        const photoId = button.data('photo-id');
+
+        if (!confirm('Are you sure you want to disqualify this photo?')) {
+            return;
+        }
+
+        // Disable button during submission
+        button.prop('disabled', true);
+
+        $.ajax({
+            url: photoContestVoting.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'handle_photo_tagging',
+                nonce: photoContestVoting.nonce,
+                photo_id: photoId,
+                tag_name: 'disqualified'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Reload page to show next photo
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + response.data);
+                    button.prop('disabled', false);
+                }
+            },
+            error: function() {
+                alert('Error disqualifying photo');
+                button.prop('disabled', false);
+            }
+        });
+    });
 }); 

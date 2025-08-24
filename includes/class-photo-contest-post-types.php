@@ -18,8 +18,18 @@ class Photo_Contest_Post_Types {
         add_filter('manage_photos_posts_columns', array($this, 'add_featured_image_column'));
         add_action('manage_photos_posts_custom_column', array($this, 'display_featured_image_column'), 10, 2);
 
+        // Add photo_author column to admin list
+        add_filter('manage_photos_posts_columns', array($this, 'add_photo_author_column'));
+        add_action('manage_photos_posts_custom_column', array($this, 'display_photo_author_column'), 10, 2);
+
         // Register the photo template
         add_action('init', array($this, 'register_photo_template'));
+        
+        // Register photo_tag taxonomy
+        add_action('init', array($this, 'register_photo_tag_taxonomy'));
+        
+        // Add taxonomy filter to admin list
+        add_action('restrict_manage_posts', array($this, 'add_photo_tag_filter'));
     }
 
     /**
@@ -147,7 +157,23 @@ class Photo_Contest_Post_Types {
                 echo '<span class="dashicons dashicons-format-image"></span>';
             }
         }
+    }  
+    /**
+     * Add photo_author column to admin list
+     */
+    public function add_photo_author_column($columns) {
+        $columns['photo_author'] = __('Author', 'photo-contest');
+        return $columns;
     }
+    /**
+     * Display photo_author in the admin list
+     */
+    public function display_photo_author_column($column, $post_id) {
+        if ($column === 'photo_author') {
+            echo get_post_meta($post_id, 'photo_author', true);
+        }
+    }
+
 
     /**
      * Register the photo template
@@ -221,4 +247,78 @@ class Photo_Contest_Post_Types {
             'template_lock' => false
         ]);
     }
+
+    /**
+     * Register photo_tag taxonomy
+     */
+    public function register_photo_tag_taxonomy() {
+        $labels = array(
+            'name'                       => _x('Photo Tags', 'taxonomy general name', 'photo-contest'),
+            'singular_name'              => _x('Photo Tag', 'taxonomy singular name', 'photo-contest'),
+            'search_items'               => __('Search Photo Tags', 'photo-contest'),
+            'popular_items'              => __('Popular Photo Tags', 'photo-contest'),
+            'all_items'                  => __('All Photo Tags', 'photo-contest'),
+            'parent_item'                => null,
+            'parent_item_colon'          => null,
+            'edit_item'                  => __('Edit Photo Tag', 'photo-contest'),
+            'update_item'                => __('Update Photo Tag', 'photo-contest'),
+            'add_new_item'               => __('Add New Photo Tag', 'photo-contest'),
+            'new_item_name'              => __('New Photo Tag Name', 'photo-contest'),
+            'separate_items_with_commas' => __('Separate photo tags with commas', 'photo-contest'),
+            'add_or_remove_items'        => __('Add or remove photo tags', 'photo-contest'),
+            'choose_from_most_used'      => __('Choose from the most used photo tags', 'photo-contest'),
+            'not_found'                  => __('No photo tags found.', 'photo-contest'),
+            'menu_name'                  => __('Photo Tags', 'photo-contest'),
+        );
+
+        $args = array(
+            'hierarchical'          => true,
+            'labels'                => $labels,
+            'show_ui'               => true,
+            'show_admin_column'     => true,
+            'show_in_nav_menus'     => true,
+            'show_tagcloud'         => true,
+            'show_in_rest'          => true,
+            'query_var'             => true,
+            'rewrite'               => array('slug' => 'photo-tag'),
+        );
+
+        register_taxonomy('photo_tag', array('photos'), $args);
+    }
+
+    /**
+     * Add photo_tag filter to admin list
+     */
+    public function add_photo_tag_filter() {
+        global $typenow;
+        
+        // Only show filter on photos post type
+        if ($typenow !== 'photos') {
+            return;
+        }
+
+        // Get current selected term
+        $selected = isset($_GET['photo_tag']) ? $_GET['photo_tag'] : '';
+
+        // Get all photo tags
+        $terms = get_terms(array(
+            'taxonomy' => 'photo_tag',
+            'hide_empty' => true,
+        ));
+
+        if (!empty($terms) && !is_wp_error($terms)) {
+            echo '<select name="photo_tag" id="photo_tag_filter">';
+            echo '<option value="">' . __('All Photo Tags', 'photo-contest') . '</option>';
+            
+            foreach ($terms as $term) {
+                $selected_attr = ($selected == $term->slug) ? 'selected="selected"' : '';
+                echo '<option value="' . esc_attr($term->slug) . '" ' . $selected_attr . '>';
+                echo esc_html($term->name) . ' (' . $term->count . ')';
+                echo '</option>';
+            }
+            
+            echo '</select>';
+        }
+    }
+
 } 

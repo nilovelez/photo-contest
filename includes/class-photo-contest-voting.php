@@ -19,6 +19,8 @@ class Photo_Contest_Voting {
         // Add AJAX handlers
         add_action('wp_ajax_submit_vote', array($this, 'handle_vote_submission'));
         add_action('wp_ajax_nopriv_submit_vote', array($this, 'handle_vote_submission'));
+        add_action('wp_ajax_handle_photo_tagging', array($this, 'handle_photo_tagging'));
+        add_action('wp_ajax_nopriv_handle_photo_tagging', array($this, 'handle_photo_tagging'));
         
         // Add scripts and styles
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
@@ -26,6 +28,7 @@ class Photo_Contest_Voting {
         // Register shortcodes
         add_shortcode('vote_photos', array($this, 'render_voting_interface'));
         add_shortcode('vote_results', array($this, 'render_results_table'));
+        add_shortcode('authors_report', array($this, 'render_authors_report'));
     }
 
     /**
@@ -85,6 +88,9 @@ class Photo_Contest_Voting {
         ?>
         <div class="photo-contest-voting" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
             <h2><?php _e('Vote for this Photo', 'photo-contest'); ?></h2>
+            <button class="disqualify-button" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
+                <?php _e('Disqualify this photo', 'photo-contest'); ?>
+            </button>
             <?php 
             $image_url = get_post_meta($photo->ID, 'photo_image_url', true);
             if (!empty($image_url)) {
@@ -135,6 +141,14 @@ class Photo_Contest_Voting {
                     'key' => '_photo_vote_' . $user_id,
                     'compare' => 'NOT EXISTS'
                 )
+            ),
+            'tax_query' => array(
+                array(
+                    'taxonomy' => 'photo_tag',
+                    'field' => 'slug',
+                    'terms' => 'disqualified',
+                    'operator' => 'NOT IN'
+                )
             )
         );
 
@@ -155,6 +169,14 @@ class Photo_Contest_Voting {
                 array(
                     'key' => '_photo_vote_' . $user_id,
                     'compare' => 'NOT EXISTS'
+                )
+            ),
+            'tax_query' => array(
+                array(
+                    'taxonomy' => 'photo_tag',
+                    'field' => 'slug',
+                    'terms' => 'disqualified',
+                    'operator' => 'NOT IN'
                 )
             )
         );
@@ -335,6 +357,187 @@ class Photo_Contest_Voting {
                 </tbody>
             </table>
         </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Handle photo tagging (generic function for adding tags to photos)
+     */
+    public function handle_photo_tagging() {
+        if (!is_user_logged_in()) {
+            wp_send_json_error('User not logged in');
+        }
+
+        $photo_id = isset($_POST['photo_id']) ? intval($_POST['photo_id']) : 0;
+        $tag_name = isset($_POST['tag_name']) ? sanitize_text_field($_POST['tag_name']) : '';
+
+        if (!$photo_id || !$tag_name) {
+            wp_send_json_error('Invalid parameters');
+        }
+
+        // Check if photo exists
+        $photo = get_post($photo_id);
+        if (!$photo || $photo->post_type !== 'photos') {
+            wp_send_json_error('Photo not found');
+        }
+
+        // Add the tag to the photo
+        $result = wp_set_object_terms($photo_id, $tag_name, 'photo_tag', true);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error('Error adding tag: ' . $result->get_error_message());
+        }
+
+        wp_send_json_success(array(
+            'message' => 'Tag added successfully',
+            'photo_id' => $photo_id,
+            'tag_name' => $tag_name
+        ));
+    }
+
+    /**
+     * Render authors report
+     */
+    public function render_authors_report() {
+        // Get all photos
+        $args = array(
+            'post_type' => 'photos',
+            'posts_per_page' => -1,
+            'post_status' => 'publish'
+        );
+
+        $photos = get_posts($args);
+        
+        if (empty($photos)) {
+            return '<p>' . __('No photos found', 'photo-contest') . '</p>';
+        }
+
+        // Group photos by author
+        $authors_photos = array();
+        foreach ($photos as $photo) {
+            $author = get_post_meta($photo->ID, 'photo_author', true);
+            if (!empty($author)) {
+                if (!isset($authors_photos[$author])) {
+                    $authors_photos[$author] = array();
+                }
+                $authors_photos[$author][] = $photo;
+            }
+        }
+
+        // Sort authors by number of photos (descending)
+        uasort($authors_photos, function($a, $b) {
+            return count($b) - count($a);
+        });
+
+        if (empty($authors_photos)) {
+            return '<p>' . __('No authors found', 'photo-contest') . '</p>';
+        }
+
+        ob_start();
+        ?>
+        <div class="photo-contest-authors-report">
+            <?php foreach ($authors_photos as $author => $author_photos): ?>
+                <div class="author-section">
+                    <h3 class="author-name">
+                        <?php echo esc_html($author); ?> 
+                        <span class="photo-count">(<?php echo count($author_photos); ?> <?php echo count($author_photos) === 1 ? __('photo', 'photo-contest') : __('photos', 'photo-contest'); ?>)</span>
+                    </h3>
+                    <div class="author-photos-grid">
+                        <?php foreach ($author_photos as $photo): ?>
+                            <div class="photo-thumbnail">
+                                <?php 
+                                $thumbnail_url = get_post_meta($photo->ID, 'photo_thumbnail_url', true);
+                                $photo_url = get_post_meta($photo->ID, 'photo_url', true);
+                                
+                                if (!empty($thumbnail_url)) {
+                                    if (!empty($photo_url)) {
+                                        echo '<a href="' . esc_url($photo_url) . '" target="_blank">';
+                                    }
+                                    echo '<img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($photo->post_title) . '" title="' . esc_attr($photo->post_title) . '">';
+                                    if (!empty($photo_url)) {
+                                        echo '</a>';
+                                    }
+                                } else {
+                                    echo '<div class="no-thumbnail">' . esc_html($photo->post_title) . '</div>';
+                                }
+                                ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <style>
+        .photo-contest-authors-report {
+            max-width: 100%;
+        }
+        
+        .author-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .author-name {
+            margin: 0 0 15px 0;
+            font-size: 1.5em;
+            color: #333;
+        }
+        
+        .photo-count {
+            font-size: 0.8em;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .author-photos-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        
+        .photo-thumbnail {
+            flex: 0 0 auto;
+        }
+        
+        .photo-thumbnail img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .photo-thumbnail img:hover {
+            transform: scale(1.05);
+        }
+        
+        .photo-thumbnail a {
+            text-decoration: none;
+        }
+        
+        .no-thumbnail {
+            width: 100px;
+            height: 100px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+            word-break: break-word;
+        }
+        </style>
         <?php
         return ob_get_clean();
     }

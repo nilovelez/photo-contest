@@ -49,6 +49,27 @@
     margin: 0;
 }
 
+.disqualify-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    transition: background-color 0.2s;
+}
+
+.disqualify-button:hover {
+    background-color: #c82333;
+}
+
+.disqualify-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
 .remaining-photos {
     margin-top: 2rem;
     font-size: 1.1rem;
