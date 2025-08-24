@@ -23,12 +23,18 @@ For the plugin to work properly, you need to create the following pages:
 1. **Voting Page**
    - Create a page with the shortcode: `[vote_photos]`
    - This page will display the voting interface where users can vote for photos
+   - Users can also disqualify photos they consider inappropriate
 
 2. **Results Page**
    - Create a page with the shortcode: `[vote_results]`
    - This page will display the top 10 photos ranked by average score
 
-3. **Photos Archive**
+3. **Authors Report Page**
+   - Create a page with the shortcode: `[authors_report]`
+   - This page will display all authors grouped by their submitted photos
+   - Shows author name, photo count, and thumbnails of all their photos
+
+4. **Photos Archive**
    - Add this URL to your menu: `[your-site-url]/photos/`
    - This page will display all photos participating in the contest
 
@@ -36,6 +42,8 @@ For the plugin to work properly, you need to create the following pages:
 
 - Users must be logged in to vote
 - Each user can vote for each photo only once
+- Users can disqualify photos they consider inappropriate
+- Disqualified photos are excluded from voting
 - Votes are converted to points:
   - 1 star = 0 points
   - 2 stars = 3 points
@@ -50,6 +58,7 @@ The plugin automatically:
 - Imports photos from the WordPress Photo Directory
 - Updates the photos list periodically
 - Calculates and updates the average scores
+- Manages photo tags and disqualifications
 
 ## Requirements
 
@@ -68,7 +77,19 @@ No, each user can vote for each photo only once.
 ### How often are the photos updated?
 Photos are updated automatically when the cron job runs. You can also update them manually from the settings page.
 
+### Can users disqualify photos?
+Yes, users can disqualify photos they consider inappropriate. Disqualified photos are excluded from the voting process.
+
+### How do I view all authors and their photos?
+Create a page with the shortcode `[authors_report]` to see all authors grouped by their submitted photos.
+
 ## Changelog
+
+### 1.1.0
+- Added photo disqualification feature
+- Added authors report shortcode `[authors_report]`
+- Enhanced voting interface with disqualify button
+- Improved photo management with tags
 
 ### 1.0.0
 - Initial release

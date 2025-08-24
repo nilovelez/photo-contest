@@ -30,6 +30,12 @@ class Photo_Contest_Post_Types {
         
         // Add taxonomy filter to admin list
         add_action('restrict_manage_posts', array($this, 'add_photo_tag_filter'));
+        
+        // Add custom thumbnail filter for photos post type
+        add_filter('post_thumbnail_html', array($this, 'custom_thumbnail_for_photos'), 10, 5);
+        
+        // Add custom content filter for photos post type
+        add_filter('the_content', array($this, 'add_photo_metadata_to_content'));
     }
 
     /**
@@ -319,6 +325,82 @@ class Photo_Contest_Post_Types {
             
             echo '</select>';
         }
+    }
+
+    /**
+     * Custom thumbnail for photos post type
+     * 
+     * @param string $html The post thumbnail HTML
+     * @param int $post_id The post ID
+     * @param int $thumbnail_id The thumbnail ID
+     * @param string $size The requested image size
+     * @param array $attr Query string of attributes
+     * @return string The modified HTML
+     */
+    public function custom_thumbnail_for_photos($html, $post_id, $thumbnail_id, $size, $attr) {
+        // Only apply to photos post type
+        if (get_post_type($post_id) !== 'photos') {
+            return $html;
+        }
+
+        // If there's already a featured image, use it
+        if (!empty($html)) {
+            return $html;
+        }
+
+        // Get the custom thumbnail URL
+        $thumbnail_url = get_post_meta($post_id, 'photo_image_url', true);
+        
+        if (!empty($thumbnail_url)) {
+            // Get post title for alt text
+            $post_title = get_the_title($post_id);
+            
+            // Build the HTML with the custom thumbnail
+            $html = sprintf(
+                '<img src="%s" alt="%s" class="%s" %s>',
+                esc_url($thumbnail_url),
+                esc_attr($post_title),
+                esc_attr(isset($attr['class']) ? $attr['class'] : ''),
+                isset($attr['width']) ? 'width="' . esc_attr($attr['width']) . '"' : '',
+                isset($attr['height']) ? 'height="' . esc_attr($attr['height']) . '"' : ''
+            );
+        }
+
+        return $html;
+    }
+
+    /**
+     * Add photo metadata to content for photos post type
+     * 
+     * @param string $content The post content
+     * @return string The modified content
+     */
+    public function add_photo_metadata_to_content($content) {
+        // Only apply to photos post type and single posts
+        if (get_post_type() !== 'photos' || !is_single()) {
+            return $content;
+        }
+
+        $post_id = get_the_ID();
+        $author = get_post_meta($post_id, 'photo_author', true);
+        $photo_url = get_post_meta($post_id, 'photo_url', true);
+
+        $metadata_html = '<div class="photo-metadata" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #007cba; border-radius: 4px;">';
+        
+        if (!empty($author)) {
+            $metadata_html .= '<p><strong>' . __('Author:', 'photo-contest') . '</strong> ' . esc_html($author) . '</p>';
+        }
+        
+        if (!empty($photo_url)) {
+            $metadata_html .= '<p><a href="' . esc_url($photo_url) . '" target="_blank" rel="noopener noreferrer" style="color: #007cba; text-decoration: none;">';
+            $metadata_html .= '<span style="margin-right: 5px;">🔗</span>' . __('View in WordPress Photo Directory', 'photo-contest');
+            $metadata_html .= '</a></p>';
+        }
+        
+        $metadata_html .= '</div>';
+
+        // Add the metadata after the content
+        return $content . $metadata_html;
     }
 
 } 
