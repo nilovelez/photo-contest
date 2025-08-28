@@ -34,7 +34,12 @@ For the plugin to work properly, you need to create the following pages:
    - This page will display all authors grouped by their submitted photos
    - Shows author name, photo count, and thumbnails of all their photos
 
-4. **Photos Archive**
+4. **Judges Report Page**
+   - Create a page with the shortcode: `[judges_report]`
+   - This page will display a table with all site users (display name) and how many accepted photos each one has voted
+   - Disqualified photos are excluded from the vote count
+
+5. **Photos Archive**
    - Add this URL to your menu: `[your-site-url]/photos/`
    - This page will display all photos participating in the contest
 
@@ -83,7 +88,13 @@ Yes, users can disqualify photos they consider inappropriate. Disqualified photo
 ### How do I view all authors and their photos?
 Create a page with the shortcode `[authors_report]` to see all authors grouped by their submitted photos.
 
+### How do I see judges and their activity?
+Create a page with the shortcode `[judges_report]`. It lists all site users (by display name) and how many accepted photos each one has voted. Photos tagged as `disqualified` are not counted.
+
 ## Changelog
+
+### 1.2.0
+- Added judges report shortcode `[judges_report]` to list user voting activity (accepted photos only)
 
 ### 1.1.0
 - Added photo disqualification feature

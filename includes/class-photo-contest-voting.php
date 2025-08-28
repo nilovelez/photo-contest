@@ -29,6 +29,7 @@ class Photo_Contest_Voting {
         add_shortcode('vote_photos', array($this, 'render_voting_interface'));
         add_shortcode('vote_results', array($this, 'render_results_table'));
         add_shortcode('authors_report', array($this, 'render_authors_report'));
+        add_shortcode('judges_report', array($this, 'render_judges_report'));
     }
 
     /**
@@ -314,7 +315,7 @@ class Photo_Contest_Voting {
     public function render_results_table() {
         $args = array(
             'post_type' => 'photos',
-            'posts_per_page' => 10,
+            'posts_per_page' => 20,
             'meta_key' => '_photo_vote_average',
             'orderby' => 'meta_value_num',
             'order' => 'DESC',
@@ -342,9 +343,10 @@ class Photo_Contest_Voting {
                         <th><?php _e('Photo', 'photo-contest'); ?></th>
                         <th><?php _e('Title', 'photo-contest'); ?></th>
                         <th><?php _e('Author', 'photo-contest'); ?></th>
-                        <th><?php _e('Average Score', 'photo-contest'); ?></th>
+                        <th><?php _e('Votes', 'photo-contest'); ?></th>
+                        <th><?php _e('Score', 'photo-contest'); ?></th>
                     </tr>
-                </thead>
+                </thead>    
                 <tbody>
                     <?php foreach ($photos as $index => $photo): ?>
                         <tr>
@@ -359,6 +361,18 @@ class Photo_Contest_Voting {
                             </td>
                             <td><a href="<?php echo esc_url(get_post_meta($photo->ID, 'photo_url', true)); ?>"><?php echo esc_html($photo->post_title); ?></a></td>
                             <td><?php echo esc_html(get_post_meta($photo->ID, 'photo_author', true)); ?></td>
+                            <td>
+                                <?php 
+                                $all_meta = get_post_meta($photo->ID);
+                                $vote_count = 0;
+                                foreach ($all_meta as $meta_key => $values) {
+                                    if (strpos($meta_key, '_photo_vote_') === 0) {
+                                        $vote_count++;
+                                    }
+                                }
+                                echo intval($vote_count);
+                                ?>
+                            </td>
                             <td><?php echo number_format(get_post_meta($photo->ID, '_photo_vote_average', true), 2); ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -593,6 +607,101 @@ class Photo_Contest_Voting {
          .rejected-photo {
              opacity: 0.25;
          }
+        </style>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Render judges report
+     */
+    public function render_judges_report() {
+        // Get all users
+        $users = get_users(array(
+            'fields' => array('ID', 'display_name')
+        ));
+
+        if (empty($users)) {
+            return '<p>' . __('No users found', 'photo-contest') . '</p>';
+        }
+
+        // Initialize stats map: user_id => ['display_name' => ..., 'count' => 0]
+        $judge_stats = array();
+        foreach ($users as $user) {
+            $judge_stats[$user->ID] = array(
+                'display_name' => $user->display_name,
+                'count' => 0,
+            );
+        }
+
+        // Get all accepted photos (exclude disqualified)
+        $photos = get_posts(array(
+            'post_type' => 'photos',
+            'posts_per_page' => -1,
+            'post_status' => 'publish',
+            'tax_query' => array(
+                array(
+                    'taxonomy' => 'photo_tag',
+                    'field' => 'slug',
+                    'terms' => 'disqualified',
+                    'operator' => 'NOT IN'
+                )
+            )
+        ));
+
+        // For each photo, increment count for users who voted it
+        foreach ($photos as $photo) {
+            $all_meta = get_post_meta($photo->ID);
+            if (empty($all_meta)) {
+                continue;
+            }
+            foreach ($all_meta as $meta_key => $values) {
+                if (strpos($meta_key, '_photo_vote_') !== 0) {
+                    continue;
+                }
+                // Extract user id from meta key
+                $user_id = intval(substr($meta_key, strlen('_photo_vote_')));
+                if (!$user_id) {
+                    continue;
+                }
+                if (isset($judge_stats[$user_id])) {
+                    $judge_stats[$user_id]['count'] += 1;
+                }
+            }
+        }
+
+        // Sort judges desc by count, then by name
+        uasort($judge_stats, function($a, $b) {
+            if ($a['count'] === $b['count']) {
+                return strcasecmp($a['display_name'], $b['display_name']);
+            }
+            return $b['count'] - $a['count'];
+        });
+
+        ob_start();
+        ?>
+        <div class="photo-contest-judges-report">
+            <table>
+                <thead>
+                    <tr>
+                        <th><?php _e('Judge', 'photo-contest'); ?></th>
+                        <th><?php _e('Voted Photos (accepted only)', 'photo-contest'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($judge_stats as $stat): ?>
+                        <tr>
+                            <td><?php echo esc_html($stat['display_name']); ?></td>
+                            <td><?php echo intval($stat['count']); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <style>
+        .photo-contest-judges-report table { width: 100%; border-collapse: collapse; }
+        .photo-contest-judges-report th, .photo-contest-judges-report td { padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: left; }
+        .photo-contest-judges-report thead th { background: #f5f5f5; }
         </style>
         <?php
         return ob_get_clean();
