@@ -89,10 +89,10 @@ class Photo_Contest_Voting {
         ?>
         <div class="photo-contest-voting" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
             <div class="photo-contest-voting-header">   
-                <h2><?php _e('Vote for this Photo', 'photo-contest'); ?></h2>
-                <button class="disqualify-button" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
-                    <?php _e('Disqualify this photo', 'photo-contest'); ?>
-                </button>
+            <h2><?php _e('Vote for this Photo', 'photo-contest'); ?></h2>
+            <button class="disqualify-button" data-photo-id="<?php echo esc_attr($photo->ID); ?>">
+                <?php _e('Disqualify this photo', 'photo-contest'); ?>
+            </button>
             </div>
             <?php 
             $image_url = get_post_meta($photo->ID, 'photo_image_url', true);
@@ -250,15 +250,17 @@ class Photo_Contest_Voting {
     }
 
     /**
-     * Update photo average
+     * Update photo average and count
      */
     private function update_photo_average($photo_id) {
         global $wpdb;
 
-        // Get all votes for this photo
+        // Get all votes for this photo, excluding aggregate meta keys
         $votes = $wpdb->get_col($wpdb->prepare(
             "SELECT meta_value FROM $wpdb->postmeta 
-            WHERE post_id = %d AND meta_key LIKE '_photo_vote_%'",
+            WHERE post_id = %d 
+              AND meta_key LIKE '_photo_vote_%'
+              AND meta_key NOT IN ('_photo_vote_average','_photo_vote_count')",
             $photo_id
         ));
 
@@ -271,8 +273,24 @@ class Photo_Contest_Voting {
         $count = count($votes);
         $average = $total / $count;
 
-        // Update average
+        // Update average and count
         update_post_meta($photo_id, '_photo_vote_average', $average);
+        update_post_meta($photo_id, '_photo_vote_count', $count);
+    }
+
+    /**
+     * Recalculate averages and counts for all photos
+     */
+    public function recalculate_all_photo_averages() {
+        $photos = get_posts(array(
+            'post_type' => 'photos',
+            'posts_per_page' => -1,
+            'post_status' => 'publish',
+            'fields' => 'ids',
+        ));
+        foreach ($photos as $photo_id) {
+            $this->update_photo_average($photo_id);
+        }
     }
 
     /**
@@ -316,15 +334,22 @@ class Photo_Contest_Voting {
         $args = array(
             'post_type' => 'photos',
             'posts_per_page' => 30,
-            'meta_key' => '_photo_vote_average',
-            'orderby' => 'meta_value_num',
-            'order' => 'DESC',
             'meta_query' => array(
-                array(
+                'avg' => array(
                     'key' => '_photo_vote_average',
-                    'compare' => 'EXISTS'
-                )
-            )
+                    'type' => 'NUMERIC',
+                    'compare' => 'EXISTS',
+                ),
+                'count' => array(
+                    'key' => '_photo_vote_count',
+                    'type' => 'NUMERIC',
+                    'compare' => 'EXISTS',
+                ),
+            ),
+            'orderby' => array(
+                'avg' => 'DESC',
+                'count' => 'DESC',
+            ),
         );
 
         $photos = get_posts($args);
@@ -333,25 +358,7 @@ class Photo_Contest_Voting {
             return '<p>' . __('No votes yet', 'photo-contest') . '</p>';
         }
 
-        // Pre-compute votes per photo (count only _photo_vote_{numericId}, skip _photo_vote_average)
-        $photo_votes_map = array();
-        foreach ($photos as $photo) {
-            $all_meta = get_post_meta($photo->ID);
-            $vote_count = 0;
-            foreach ($all_meta as $meta_key => $values) {
-                if ($meta_key === '_photo_vote_average') {
-                    continue;
-                }
-                if (strpos($meta_key, '_photo_vote_') !== 0) {
-                    continue;
-                }
-                $suffix = substr($meta_key, strlen('_photo_vote_'));
-                if ($suffix !== '' && ctype_digit($suffix)) {
-                    $vote_count++;
-                }
-            }
-            $photo_votes_map[$photo->ID] = $vote_count;
-        }
+        // Votes count is stored in _photo_vote_count (set on vote updates)
 
         ob_start();
         ?>
@@ -366,7 +373,7 @@ class Photo_Contest_Voting {
                         <th><?php _e('Votes', 'photo-contest'); ?></th>
                         <th><?php _e('Score', 'photo-contest'); ?></th>
                     </tr>
-                </thead>    
+                </thead>
                 <tbody>
                     <?php foreach ($photos as $index => $photo): ?>
                         <tr>
@@ -381,7 +388,7 @@ class Photo_Contest_Voting {
                             </td>
                             <td><a href="<?php echo esc_url(get_post_meta($photo->ID, 'photo_url', true)); ?>"><?php echo esc_html($photo->post_title); ?></a></td>
                             <td><?php echo esc_html(get_post_meta($photo->ID, 'photo_author', true)); ?></td>
-                            <td><?php echo isset($photo_votes_map[$photo->ID]) ? intval($photo_votes_map[$photo->ID]) : 0; ?></td>
+                            <td><?php echo intval(get_post_meta($photo->ID, '_photo_vote_count', true)); ?></td>
                             <td><?php echo number_format(get_post_meta($photo->ID, '_photo_vote_average', true), 2); ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -658,6 +665,8 @@ class Photo_Contest_Voting {
             )
         ));
 
+        $total_accepted_photos = count($photos);
+
         // For each photo, increment count for users who voted it
         foreach ($photos as $photo) {
             $all_meta = get_post_meta($photo->ID);
@@ -694,7 +703,8 @@ class Photo_Contest_Voting {
                 <thead>
                     <tr>
                         <th><?php _e('Judge', 'photo-contest'); ?></th>
-                        <th><?php _e('Voted Photos (accepted only)', 'photo-contest'); ?></th>
+                        <th><?php _e('Voted Photos', 'photo-contest'); ?></th>
+                        <th><?php _e('Voted %', 'photo-contest'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -702,6 +712,14 @@ class Photo_Contest_Voting {
                         <tr>
                             <td><?php echo esc_html($stat['display_name']); ?></td>
                             <td><?php echo intval($stat['count']); ?></td>
+                            <td>
+                                <?php 
+                                $percent = ($total_accepted_photos > 0)
+                                    ? round(($stat['count'] / $total_accepted_photos) * 100)
+                                    : 0;
+                                echo intval($percent) . '%';
+                                ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

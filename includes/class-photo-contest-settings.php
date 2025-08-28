@@ -62,15 +62,46 @@ class Photo_Contest_Settings {
         if (!current_user_can('manage_options')) {
             return;
         }
+        // Handle manual recalculation action
+        if (isset($_POST['photo_contest_recalculate']) && check_admin_referer('photo_contest_recalculate_action', 'photo_contest_recalculate_nonce')) {
+            // Find voting class instance and trigger recalculation
+            if (class_exists('Photo_Contest_Voting')) {
+                // Instantiate and run recalculation
+                $voting = new Photo_Contest_Voting();
+                if (method_exists($voting, 'recalculate_all_photo_averages')) {
+                    try {
+                        $voting->recalculate_all_photo_averages();
+                        add_settings_error('photo_contest_recalc', 'photo_contest_recalc_done', __('Contest results recalculated successfully.', 'photo-contest'), 'updated');
+                    } catch (Exception $e) {
+                        add_settings_error('photo_contest_recalc', 'photo_contest_recalc_error', __('An error occurred while recalculating results.', 'photo-contest') . ' ' . esc_html($e->getMessage()), 'error');
+                    }
+                } else {
+                    add_settings_error('photo_contest_recalc', 'photo_contest_recalc_missing_method', __('Recalculation method not found.', 'photo-contest'), 'error');
+                }
+            } else {
+                add_settings_error('photo_contest_recalc', 'photo_contest_recalc_missing_class', __('Recalculation handler not available.', 'photo-contest'), 'error');
+            }
+        }
         ?>
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            <?php settings_errors(); ?>
             <form action="options.php" method="post">
                 <?php
                 settings_fields('photo_contest_options');
                 do_settings_sections('photo-contest-settings');
                 submit_button();
                 ?>
+            </form>
+            <hr>
+            <form method="post">
+                <?php wp_nonce_field('photo_contest_recalculate_action', 'photo_contest_recalculate_nonce'); ?>
+                <p>
+                    <button type="submit" name="photo_contest_recalculate" class="button button-secondary">
+                        <?php _e('Recalculate contest results', 'photo-contest'); ?>
+                    </button>
+                </p>
+                <p class="description"><?php _e('Recalculates the average score and vote count for all contest photos.', 'photo-contest'); ?></p>
             </form>
         </div>
         <?php
