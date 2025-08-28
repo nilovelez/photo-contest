@@ -315,7 +315,7 @@ class Photo_Contest_Voting {
     public function render_results_table() {
         $args = array(
             'post_type' => 'photos',
-            'posts_per_page' => 20,
+            'posts_per_page' => 30,
             'meta_key' => '_photo_vote_average',
             'orderby' => 'meta_value_num',
             'order' => 'DESC',
