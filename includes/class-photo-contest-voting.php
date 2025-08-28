@@ -333,6 +333,26 @@ class Photo_Contest_Voting {
             return '<p>' . __('No votes yet', 'photo-contest') . '</p>';
         }
 
+        // Pre-compute votes per photo (count only _photo_vote_{numericId}, skip _photo_vote_average)
+        $photo_votes_map = array();
+        foreach ($photos as $photo) {
+            $all_meta = get_post_meta($photo->ID);
+            $vote_count = 0;
+            foreach ($all_meta as $meta_key => $values) {
+                if ($meta_key === '_photo_vote_average') {
+                    continue;
+                }
+                if (strpos($meta_key, '_photo_vote_') !== 0) {
+                    continue;
+                }
+                $suffix = substr($meta_key, strlen('_photo_vote_'));
+                if ($suffix !== '' && ctype_digit($suffix)) {
+                    $vote_count++;
+                }
+            }
+            $photo_votes_map[$photo->ID] = $vote_count;
+        }
+
         ob_start();
         ?>
         <div class="photo-contest-results">
@@ -361,18 +381,7 @@ class Photo_Contest_Voting {
                             </td>
                             <td><a href="<?php echo esc_url(get_post_meta($photo->ID, 'photo_url', true)); ?>"><?php echo esc_html($photo->post_title); ?></a></td>
                             <td><?php echo esc_html(get_post_meta($photo->ID, 'photo_author', true)); ?></td>
-                            <td>
-                                <?php 
-                                $all_meta = get_post_meta($photo->ID);
-                                $vote_count = 0;
-                                foreach ($all_meta as $meta_key => $values) {
-                                    if (strpos($meta_key, '_photo_vote_') === 0) {
-                                        $vote_count++;
-                                    }
-                                }
-                                echo intval($vote_count);
-                                ?>
-                            </td>
+                            <td><?php echo isset($photo_votes_map[$photo->ID]) ? intval($photo_votes_map[$photo->ID]) : 0; ?></td>
                             <td><?php echo number_format(get_post_meta($photo->ID, '_photo_vote_average', true), 2); ?></td>
                         </tr>
                     <?php endforeach; ?>
