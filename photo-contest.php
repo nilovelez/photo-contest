@@ -3,7 +3,7 @@
  * Plugin Name: WordPress Photo Directory Photo Contest
  * Plugin URI: https://www.nilovelez.com/photo-contest/
  * Description: A WordPress plugin to manage photo contests
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Nilo Vélez
  * Author URI: https://www.nilovelez.com/
  * Text Domain: photo-contest
@@ -18,7 +18,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('PHOTO_CONTEST_VERSION', '1.2.0');
+define('PHOTO_CONTEST_VERSION', '1.2.1');
 define('PHOTO_CONTEST_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('PHOTO_CONTEST_PLUGIN_URL', plugin_dir_url(__FILE__));
 
