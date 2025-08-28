@@ -40,6 +40,14 @@ class Photo_Contest_Settings {
             'photo_contest_main_section'
         );
 
+        add_settings_field(
+            'disallowed_people',
+            __('Judges and organizers', 'photo-contest'),
+            array($this, 'render_disallowed_people_field'),
+            'photo-contest-settings',
+            'photo_contest_main_section'
+        );
+
         add_settings_section(
             'photo_contest_cron',
             'Cron Configuration',
@@ -173,6 +181,23 @@ class Photo_Contest_Settings {
         }
     }
 
+    public function render_disallowed_people_field() {
+        $options = get_option($this->option_name);
+        $disallowed_people = isset($options['photo_contest_disallowed_people']) ? unserialize($options['photo_contest_disallowed_people']) : array();
+        $disallowed_people_text = implode("\n", $disallowed_people);
+        ?>
+        <textarea 
+               name="<?php echo esc_attr($this->option_name); ?>[disallowed_people]" 
+               rows="5" 
+               cols="50"
+               class="large-text"
+               placeholder="John Doe&#10;Jane Smith&#10;Bob Johnson"><?php echo esc_textarea($disallowed_people_text); ?></textarea>
+        <p class="description">
+            <?php _e('Add a list of the people that can\'t participate in the contest, one per line.', 'photo-contest'); ?>
+        </p>
+        <?php
+    }
+
     private function validate_hashtag($hashtag) {
         // Convert to lowercase but keep the hashtag as entered
         $hashtag = strtolower(trim($hashtag));
@@ -244,6 +269,11 @@ class Photo_Contest_Settings {
             $sanitized['photo_contest_tag_id'] = $validation_result['photo_contest_tag_id'];
         }
 
+        if (isset($input['disallowed_people'])) {
+            $disallowed_people = array_filter(array_map('trim', explode("\n", $input['disallowed_people'])));
+            $sanitized['photo_contest_disallowed_people'] = serialize($disallowed_people);
+        }
+
         return $sanitized;
     }
 
@@ -255,5 +285,10 @@ class Photo_Contest_Settings {
     public function get_tag_id() {
         $options = get_option($this->option_name);
         return isset($options['photo_contest_tag_id']) ? $options['photo_contest_tag_id'] : '';
+    }
+
+    public function get_disallowed_people() {
+        $options = get_option($this->option_name);
+        return isset($options['photo_contest_disallowed_people']) ? unserialize($options['photo_contest_disallowed_people']) : array();
     }
 } 

@@ -331,6 +331,10 @@ class Photo_Contest_Voting {
      * Render results table
      */
     public function render_results_table() {
+        // Get disallowed people from settings
+        $settings = new Photo_Contest_Settings('photo-contest', '1.0.0');
+        $disallowed_people = $settings->get_disallowed_people();
+        
         $args = array(
             'post_type' => 'photos',
             'posts_per_page' => 30,
@@ -351,6 +355,15 @@ class Photo_Contest_Voting {
                 'count' => 'DESC',
             ),
         );
+        
+        // Add meta query to exclude disallowed people if any exist
+        if (!empty($disallowed_people)) {
+            $args['meta_query'][] = array(
+                'key' => 'photo_author',
+                'value' => $disallowed_people,
+                'compare' => 'NOT IN',
+            );
+        }
 
         $photos = get_posts($args);
         
