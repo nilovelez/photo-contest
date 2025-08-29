@@ -341,12 +341,12 @@ class Photo_Contest_Voting {
             'meta_query' => array(
                 'avg' => array(
                     'key' => '_photo_vote_average',
-                    'type' => 'NUMERIC',
+                    'type' => 'DECIMAL',
                     'compare' => 'EXISTS',
                 ),
                 'count' => array(
                     'key' => '_photo_vote_count',
-                    'type' => 'NUMERIC',
+                    'type' => 'UNSIGNED',
                     'compare' => 'EXISTS',
                 ),
             ),
