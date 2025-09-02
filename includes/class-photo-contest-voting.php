@@ -337,22 +337,16 @@ class Photo_Contest_Voting {
         
         $args = array(
             'post_type' => 'photos',
-            'posts_per_page' => 30,
+            'posts_per_page' => -1, // Get all photos first, then sort manually
             'meta_query' => array(
-                'avg' => array(
+                array(
                     'key' => '_photo_vote_average',
-                    'type' => 'DECIMAL',
                     'compare' => 'EXISTS',
                 ),
-                'count' => array(
+                array(
                     'key' => '_photo_vote_count',
-                    'type' => 'UNSIGNED',
                     'compare' => 'EXISTS',
                 ),
-            ),
-            'orderby' => array(
-                'avg' => 'DESC',
-                'count' => 'DESC',
             ),
         );
         
@@ -370,6 +364,23 @@ class Photo_Contest_Voting {
         if (empty($photos)) {
             return '<p>' . __('No votes yet', 'photo-contest') . '</p>';
         }
+
+        // Sort photos by average score DESC, then by vote count DESC
+        usort($photos, function($a, $b) {
+            $avg_a = floatval(get_post_meta($a->ID, '_photo_vote_average', true));
+            $avg_b = floatval(get_post_meta($b->ID, '_photo_vote_average', true));
+            
+            if (abs($avg_a - $avg_b) < 0.01) { // If averages are very close
+                $count_a = intval(get_post_meta($a->ID, '_photo_vote_count', true));
+                $count_b = intval(get_post_meta($b->ID, '_photo_vote_count', true));
+                return $count_b - $count_a; // Higher count first
+            }
+            
+            return $avg_b > $avg_a ? 1 : -1; // Higher average first
+        });
+
+        // Limit to top 30 results
+        $photos = array_slice($photos, 0, 30);
 
         // Votes count is stored in _photo_vote_count (set on vote updates)
 
